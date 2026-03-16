@@ -5,6 +5,7 @@ const cron = require('node-cron');
 const config = require('./config');
 const { fetchCVEs } = require('./cve');
 const { flagKEVMatches } = require('./kev');
+const { flagMSFModules } = require('./msf');
 const { fetchShodanResults } = require('./shodan');
 const { saveToNotion } = require('./notion');
 
@@ -18,12 +19,21 @@ async function runBriefing() {
     console.log(`✅ Found ${rawCves.length} HIGH/CRITICAL CVEs`);
 
     console.log('🔍 Checking CISA KEV list...');
-    const cves = await flagKEVMatches(rawCves);
-    const kevCount = cves.filter(c => c.isKEV).length;
+    const kevCves = await flagKEVMatches(rawCves);
+    const kevCount = kevCves.filter(c => c.isKEV).length;
     if (kevCount > 0) {
       console.log(`🚨 ${kevCount} CVE(s) are actively exploited (CISA KEV)`);
     } else {
       console.log('✅ No KEV matches today');
+    }
+
+    console.log('🔫 Checking Metasploit module availability...');
+    const cves = await flagMSFModules(kevCves);
+    const msfCount = cves.filter(c => c.msfModules.length > 0).length;
+    if (msfCount > 0) {
+      console.log(`💀 ${msfCount} CVE(s) have known Metasploit exploit modules`);
+    } else {
+      console.log('✅ No Metasploit modules found for today\'s CVEs');
     }
 
     console.log('🌐 Fetching Shodan results...');
@@ -60,6 +70,7 @@ function saveJSONReport(cves, shodanResults) {
       critical: cves.filter(c => c.severity === 'CRITICAL').length,
       high: cves.filter(c => c.severity === 'HIGH').length,
       kev_matches: cves.filter(c => c.isKEV).length,
+      msf_modules: cves.filter(c => c.msfModules?.length > 0).length,
       shodan_hosts_checked: shodanResults.length
     },
     cves: cves,

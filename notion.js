@@ -21,6 +21,29 @@ async function saveToNotion(cves, shodanResults) {
     }
   });
 
+  // ── Summary Stats ──
+  const critical = cves.filter(c => c.severity === 'CRITICAL').length;
+  const high = cves.filter(c => c.severity === 'HIGH').length;
+  const kev = cves.filter(c => c.isKEV).length;
+  const msf = cves.filter(c => c.msfModules?.length > 0).length;
+
+  blocks.push({
+    object: 'block',
+    type: 'callout',
+    callout: {
+      rich_text: [{
+        type: 'text',
+        text: {
+          content: `📊 Summary: ${cves.length} CVEs found — ${critical} CRITICAL | ${high} HIGH | ${kev} actively exploited (CISA KEV) | ${msf} with Metasploit modules`
+        }
+      }],
+      icon: { type: 'emoji', emoji: '📋' }
+    }
+  });
+
+  // ── Divider ──
+  blocks.push({ object: 'block', type: 'divider', divider: {} });
+
   // ── CVE Section ──
   blocks.push({
     object: 'block',
@@ -35,17 +58,24 @@ async function saveToNotion(cves, shodanResults) {
       object: 'block',
       type: 'paragraph',
       paragraph: {
-        rich_text: [{ type: 'text', text: { content: 'No new CVEs found for today.' } }]
+        rich_text: [{ type: 'text', text: { content: 'No HIGH or CRITICAL CVEs found this week.' } }]
       }
     });
   } else {
     for (const cve of cves) {
+      const kevBadge = cve.isKEV ? ' 🚨 ACTIVELY EXPLOITED (CISA KEV)' : '';
+      const msfBadge = cve.msfModules?.length > 0 ? ` 💀 ${cve.msfModules.length} METASPLOIT MODULE(S)` : '';
+      const msfDetails = cve.msfModules?.length > 0
+        ? '\n\n💀 Metasploit: ' + cve.msfModules.map(m => m.name).join(', ')
+        : '';
+      const content = `${cve.id} — ${cve.severity} (${cve.score})${kevBadge}${msfBadge}\nKeyword: ${cve.keyword} | Published: ${new Date(cve.published).toLocaleDateString()}\n\n${cve.description}${msfDetails}`;
+
       blocks.push({
         object: 'block',
         type: 'callout',
         callout: {
-          rich_text: [{ type: 'text', text: { content: `${cve.id} — ${cve.severity} (${cve.score})\nKeyword: ${cve.keyword}\n${cve.description}` } }],
-          icon: { type: 'emoji', emoji: severityEmoji(cve.severity) }
+          rich_text: [{ type: 'text', text: { content } }],
+          icon: { type: 'emoji', emoji: cve.isKEV ? '🚨' : severityEmoji(cve.severity) }
         }
       });
     }
@@ -80,13 +110,18 @@ async function saveToNotion(cves, shodanResults) {
     }
   }
 
-  // ── Divider ──
+  // ── Footer Divider ──
   blocks.push({ object: 'block', type: 'divider', divider: {} });
 
-  await notion.blocks.children.append({
-    block_id: process.env.NOTION_PAGE_ID,
-    children: blocks
-  });
+  // Notion API max 100 blocks per request — chunk if needed
+  const chunkSize = 95;
+  for (let i = 0; i < blocks.length; i += chunkSize) {
+    const chunk = blocks.slice(i, i + chunkSize);
+    await notion.blocks.children.append({
+      block_id: process.env.NOTION_PAGE_ID,
+      children: chunk
+    });
+  }
 
   console.log('✅ Briefing saved to Notion successfully.');
 }
