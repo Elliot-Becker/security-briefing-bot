@@ -39,7 +39,7 @@ async function fetchCVEs() {
         results.push({
           id: cve.id,
           keyword: keyword,
-          description: cve.descriptions[0]?.value || 'No description available',
+          description: cleanDescription(cve.descriptions[0]?.value || 'No description available'),
           severity: severity,
           score: score,
           published: cve.published
@@ -51,7 +51,15 @@ async function fetchCVEs() {
     }
   }
 
-  return results;
+  // Deduplicate by CVE ID, keeping first occurrence
+  const seen = new Set();
+  const deduplicated = results.filter(cve => {
+    if (seen.has(cve.id)) return false;
+    seen.add(cve.id);
+    return true;
+  });
+
+  return deduplicated;
 }
 
 function getTodayDate() {
@@ -70,6 +78,16 @@ function logError(context, message) {
   const entry = `[${timestamp}] ERROR in ${context}: ${message}\n`;
   fs.appendFileSync('./error.log', entry);
   console.error(`❌ ${entry.trim()}`);
+}
+
+function cleanDescription(text) {
+  return text
+    .replace(/&ndash;/g, '—')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .substring(0, 600) + (text.length > 600 ? '...' : '');
 }
 
 module.exports = { fetchCVEs };
