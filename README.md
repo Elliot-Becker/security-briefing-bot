@@ -23,12 +23,15 @@ Every morning at 7:00 AM, this bot automatically:
 | Tool | Purpose |
 |------|---------|
 | Node.js | Runtime |
-| axios | HTTP requests to NVD and Shodan APIs |
+| axios | HTTP requests to NVD, Shodan, and CISA APIs |
 | node-cron | Daily scheduling |
 | @notionhq/client | Notion API integration |
 | dotenv | Secure environment variable management |
+| PM2 | Production process manager — auto-restart and boot persistence |
+| AWS EC2 | 24/7 cloud deployment (t3.micro, us-east-1) |
 | NVD API | CVE vulnerability data (U.S. Government) |
 | Shodan API | Internet-facing host recon data |
+| CISA KEV API | Known Exploited Vulnerabilities feed |
 
 ---
 
@@ -140,13 +143,33 @@ Each daily briefing in Notion includes:
 
 ---
 
+## ☁️ Deployment
+
+This bot runs 24/7 on **AWS EC2** (t3.micro, us-east-1) managed by **PM2**.
+
+- Auto-restarts on crash via PM2
+- Survives server reboots via PM2 systemd integration  
+- Static Elastic IP for consistent SSH access
+- SSH access restricted to known IP addresses only
+- Zero-spend budget alert configured for cost monitoring
+
+---
+
 ## 🗺️ Roadmap
 
+- [x] Core CVE + Shodan briefing engine
+- [x] Notion API integration with severity-coded callouts
+- [x] CISA KEV cross-referencing
+- [x] CVE deduplication across keyword searches
+- [x] JSON report archiving
+- [x] Error logging
+- [x] AWS EC2 deployment with PM2
+- [x] Static Elastic IP assignment
 - [ ] Add email/Slack delivery for briefings
-- [ ] Integrate CISA Known Exploited Vulnerabilities (KEV) feed
-- [ ] Add CVE deduplication across keyword searches
-- [ ] Deploy to AWS EC2 for 24/7 autonomous operation
+- [ ] Integrate CISA KEV email alerts for active exploits
 - [ ] Add Metasploit module availability check per CVE
+- [ ] Deploy CloudWatch monitoring and alerting
+- [ ] Add CVE trend analysis across weekly reports
 
 ---
 
@@ -155,7 +178,7 @@ Each daily briefing in Notion includes:
 **Elliot Becker**  
 Cybersecurity Student @ Austin Peay State University  
 Incoming Security Intern @ World Wide Technology  
-[GitHub](https://github.com/elliotbecker) • [LinkedIn](https://linkedin.com/in/elliotbecker)
+[GitHub](https://github.com/Elliot-Becker) • [LinkedIn](https://linkedin.com/in/elliotbecker)
 
 ---
 
